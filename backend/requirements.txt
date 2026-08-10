@@ -7,7 +7,7 @@ alembic==1.14.0
 apscheduler==3.10.4
 pydantic-settings==2.6.0
 PyJWT==2.13.0               # current security-fixed release; Slink permits HS256 only
-bcrypt>=4.0.0
+bcrypt>=5.0.0
 httpx==0.28.1            # app uses the stable AsyncClient API
 httpcore==1.0.9          # direct dependency for DNS-pinned webhook transport
 python-multipart==0.0.31  # CVE-2024-53981, CVE-2026-24486 fixed; bumped to 0.0.31 for latest fixes
