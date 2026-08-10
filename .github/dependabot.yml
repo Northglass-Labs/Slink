@@ -1,26 +1,52 @@
 version: 2
 
+# Grouped updates. Republishing the repo made every dependency look new at
+# once, which opened 30 individual PRs — permanent noise for a single-maintainer
+# project. Grouping collapses each ecosystem into one PR per run: routine
+# patch/minor bumps arrive together and can be reviewed as a batch, while major
+# bumps stay separate because those are the ones that actually need reading.
+
 updates:
   - package-ecosystem: pip
     directory: /backend
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      backend-major:
+        patterns: ["*"]
+        update-types: ["major"]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      frontend-major:
+        patterns: ["*"]
+        update-types: ["major"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
 
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      images:
+        patterns: ["*"]
