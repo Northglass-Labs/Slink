@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & discussion
+    url: https://github.com/Northglass-Labs/Slink/discussions
+    about: Open-ended questions, ideas, and support belong in Discussions.
+  - name: Security disclosure
+    url: mailto:hello@northglass.io
+    about: Please report security vulnerabilities privately, not as public issues.

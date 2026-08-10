@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slink-config
+data:
+  # Non-secret runtime config. Anything sensitive belongs in slink-secrets.
+  SLINK_BASE_URL: "https://slink.example.com"
+  APP_ENV: "production"
+  SECURE_COOKIES: "true"
+  # Set to only the ingress-controller source address/CIDR. Empty fails closed:
+  # forwarding headers are ignored and rate limits use the direct peer address.
+  TRUSTED_PROXY_CIDRS: ""
+  RETENTION_DAYS: "90"
+  ARCHIVE_PATH: "/data/archive"
+  CS_BASE_URL: "https://api.crowdstrike.com"

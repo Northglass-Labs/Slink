@@ -1,0 +1,73 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+.coverage
+coverage.xml
+htmlcov/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Local/exported artifacts
+*.tar.gz
+slink-db-dump.sql
+dot-env
+
+# Detection archive exports (JSONL from prune job)
+data/archive/
+
+# Runtime secrets, TLS material, and encrypted database backups
+deploy/k8s/secret.env
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.crt
+backups/
+*.sql
+*.sql.gz
+*.sql.gz.age
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local assistant and tool state
+.superpowers/
+CLAUDE.local.md
+.claude/context/
+.claude/settings.local.json
+
+# Screenshots (generated, not source) — except docs/screenshots/ which
+# is the README gallery and should be tracked.
+screenshots/
+!docs/screenshots/
+!docs/screenshots/**
+
+# Playwright MCP cache
+.playwright-mcp/
+
+# Syncthing conflict files
+.sync-conflict-*
+
+# Incident investigation artifacts (local only, never commit)
+incident-artifacts/
+incidents/
+
+# Misc files not part of source
+*.pdf
+*.docx
+*.sync-conflict-*

@@ -1,0 +1,175 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+/* ============================================================
+   Slink — Northglass Labs design system
+   Monochrome dark theme. Tokens map onto the Northglass brand
+   palette (BRAND-GUIDE.md / tokens/colors.css) while keeping the
+   legacy --color-* names so component files stay untouched.
+   ============================================================ */
+
+@theme {
+  /* --- Surfaces (Northglass dark stack) --- */
+  --color-surface-0: #0A0A0A;       /* page body */
+  --color-surface-1: #111111;        /* nav, cards, modals */
+  --color-surface-2: #141414;        /* secondary surface, code */
+  --color-surface-3: #1A1A1A;        /* hover, active rows */
+  --color-surface-4: #1F1F1F;        /* disabled background */
+
+  /* --- Borders & dividers --- */
+  --color-border: #1F1F1F;
+  --color-border-subtle: #141414;
+  --color-border-bright: #2A2A2A;
+
+  /* --- Text --- */
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #A0A0A0;
+  --color-text-tertiary: #666666;
+  --color-text-inverse: #0A0A0A;
+
+  /* --- Accent (monochrome white per Northglass brand) --- */
+  --color-accent: #FAFAFA;
+  --color-accent-hover: #FFFFFF;
+  --color-accent-muted: rgba(250, 250, 250, 0.10);
+  --color-accent-glow: rgba(250, 250, 250, 0.18);
+
+  /* --- Semantic status --- */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger:  #EF4444;
+  --color-info:    #3B82F6;
+
+  /* --- Severity (threat-intel specific) --- */
+  --color-sev-critical: #EF4444;
+  --color-sev-critical-bg: rgba(239, 68, 68, 0.12);
+  --color-sev-critical-border: rgba(239, 68, 68, 0.35);
+  --color-sev-high: #F59E0B;
+  --color-sev-high-bg: rgba(245, 158, 11, 0.12);
+  --color-sev-high-border: rgba(245, 158, 11, 0.35);
+  --color-sev-medium: #FBBF24;
+  --color-sev-medium-bg: rgba(251, 191, 36, 0.10);
+  --color-sev-medium-border: rgba(251, 191, 36, 0.30);
+  --color-sev-low: #A0A0A0;
+  --color-sev-low-bg: rgba(160, 160, 160, 0.06);
+  --color-sev-low-border: rgba(160, 160, 160, 0.20);
+
+  --color-hover: rgba(255, 255, 255, 0.04);
+
+  /* --- Typography (Northglass stack) --- */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* --- Transitions --- */
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+}
+
+/* ============================================================
+   Base styles
+   ============================================================ */
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-surface-0);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
+   Custom scrollbars — thin, unobtrusive, matches theme
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-bright);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-4) transparent;
+}
+
+/* ============================================================
+   Focus styles
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+
+.animate-slide-in {
+  animation: slide-in-left 0.25s ease both;
+}
+
+/* ============================================================
+   Selection
+   ============================================================ */
+
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+}
+
+/* ============================================================
+   Input base styles
+   ============================================================ */
+
+input, select, textarea {
+  font-family: var(--font-sans);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-tertiary);
+}

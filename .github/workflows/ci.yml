@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Python 3.12 + Postgres 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+        env:
+          POSTGRES_USER: slink
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: slink_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U slink -d slink_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://slink:test-only-password@localhost:5432/slink_test
+      TEST_DATABASE_URL: postgresql+asyncpg://slink:test-only-password@localhost:5432/slink_test
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.lock
+            backend/requirements-dev.lock
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install --require-hashes -r requirements-dev.lock
+      - name: Run pytest
+        working-directory: backend
+        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=65
+      - name: Lint backend
+        working-directory: backend
+        run: ruff check app tests
+      - name: Scan backend source
+        working-directory: backend
+        run: bandit -q -r app -ll
+      - name: Verify dependency consistency
+        run: pip check
+      - name: Audit production Python dependencies
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
+        with:
+          inputs: backend/requirements.lock
+          require-hashes: true
+          disable-pip: true
+
+  frontend:
+    name: Frontend (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Audit dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  containers:
+    name: Production container builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build API
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: production
+          push: false
+
+  deployment-render:
+    name: Deployment manifests fail closed and render cleanly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Render Kustomize bundle with test-only placeholders
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp deploy/k8s/secret.env.example deploy/k8s/secret.env
+          kubectl kustomize deploy/k8s >/tmp/slink-kustomize.yaml
+          grep -q 'APP_ENV: production' /tmp/slink-kustomize.yaml
+          grep -q 'containerPort: 8080' /tmp/slink-kustomize.yaml
+          grep -q 'kind: PersistentVolumeClaim' /tmp/slink-kustomize.yaml
+          grep -q 'automountServiceAccountToken: false' /tmp/slink-kustomize.yaml
+          grep -q 'type: RuntimeDefault' /tmp/slink-kustomize.yaml
+          if grep -q ':latest' /tmp/slink-kustomize.yaml; then
+            echo "Mutable image tag found in Kustomize render" >&2
+            exit 1
+          fi
+          rm -f deploy/k8s/secret.env /tmp/slink-kustomize.yaml
+      - name: Verify Helm fail-closed and successful renders
+        shell: bash
+        run: |
+          set -euo pipefail
+          HELM_IMAGE='alpine/helm:3.17.3@sha256:d899e6316789fec04ee95300a18e454b7942539cbb3d89bde3e0655d6ca2e895'
+          cp -R deploy/helm/slink /tmp/slink-chart
+          docker run --rm -v /tmp/slink-chart:/chart "$HELM_IMAGE" \
+            dependency build /chart
+          digest="sha256:$(printf 'a%.0s' {1..64})"
+          if docker run --rm -v /tmp/slink-chart:/chart "$HELM_IMAGE" \
+            template slink /chart --set postgresql.enabled=false; then
+            echo "Helm unexpectedly rendered without required inputs" >&2
+            exit 1
+          fi
+          if docker run --rm -v /tmp/slink-chart:/chart "$HELM_IMAGE" \
+            template slink /chart \
+            --set postgresql.enabled=false \
+            --set existingSecret=slink-test-secret \
+            --set api.replicas=2 \
+            --set api.image.digest="$digest" \
+            --set frontend.image.digest="$digest"; then
+            echo "Helm unexpectedly accepted multiple scheduler-bearing API replicas" >&2
+            exit 1
+          fi
+          if docker run --rm -v /tmp/slink-chart:/chart "$HELM_IMAGE" \
+            template slink /chart \
+            --set existingSecret=slink-test-secret \
+            --set api.image.digest="$digest" \
+            --set frontend.image.digest="$digest"; then
+            echo "Helm unexpectedly accepted bundled PostgreSQL without its external Secret" >&2
+            exit 1
+          fi
+          docker run --rm -v /tmp/slink-chart:/chart "$HELM_IMAGE" \
+            template slink /chart \
+            --set postgresql.enabled=false \
+            --set existingSecret=slink-test-secret \
+            --set api.image.digest="$digest" \
+            --set frontend.image.digest="$digest" \
+            >/tmp/slink-helm.yaml
+          if grep -q '^kind: Secret$' /tmp/slink-helm.yaml; then
+            echo "Helm rendered a credential Secret" >&2
+            exit 1
+          fi
+          grep -q 'APP_ENV: "production"' /tmp/slink-helm.yaml
+          grep -q 'containerPort: 8080' /tmp/slink-helm.yaml
+          grep -q 'kind: PersistentVolumeClaim' /tmp/slink-helm.yaml
+          grep -q 'automountServiceAccountToken: false' /tmp/slink-helm.yaml
+          grep -q 'type: RuntimeDefault' /tmp/slink-helm.yaml
+      - name: Build frontend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: frontend
+          target: production
+          push: false
+
+  secrets:
+    name: Secret scan (Git history and current tree)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Install verified Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=/tmp/gitleaks_8.30.1_linux_x64.tar.gz
+          curl --fail --silent --show-error --location \
+            --output "$archive" \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $archive" \
+            | sha256sum --check -
+          tar -xzf "$archive" -C /tmp gitleaks
+          chmod 0555 /tmp/gitleaks
+          /tmp/gitleaks version
+      - name: Scan complete Git history
+        run: /tmp/gitleaks git --redact --verbose .
+      - name: Scan current tree and untracked build inputs
+        run: /tmp/gitleaks dir --redact --verbose .

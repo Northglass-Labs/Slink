@@ -1,0 +1,51 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "slink.fullname" . -}}
+{{- $apiSvc := include "slink.api.fullname" . -}}
+{{- $frontendSvc := include "slink.frontend.fullname" . -}}
+{{- $apiPort := .Values.api.service.port -}}
+{{- $frontendPort := .Values.frontend.service.port -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "slink.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.ingress.certManager.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    {{- range .Values.ingress.hosts }}
+    - hosts:
+        - {{ .host | quote }}
+      secretName: {{ default (printf "%s-tls" $fullName) $.Values.ingress.tls.secretName | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                {{- if eq .service "api" }}
+                name: {{ $apiSvc }}
+                port:
+                  number: {{ $apiPort }}
+                {{- else }}
+                name: {{ $frontendSvc }}
+                port:
+                  number: {{ $frontendPort }}
+                {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

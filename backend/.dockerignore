@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!requirements.txt
+!requirements-dev.txt
+!requirements.lock
+!requirements-dev.lock
+!entrypoint.sh
+!alembic.ini
+!alembic/
+!alembic/**/*.py
+!alembic/script.py.mako
+!app/
+!app/**/*.py

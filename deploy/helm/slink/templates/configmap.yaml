@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "slink.fullname" . }}-config
+  labels:
+    {{- include "slink.labels" . | nindent 4 }}
+data:
+  # Mirrors the non-secret half of .env.example. Anything sensitive belongs in
+  # the Secret referenced by `existingSecret`, not here.
+  SLINK_BASE_URL: {{ .Values.config.slinkBaseUrl | quote }}
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  SECURE_COOKIES: {{ .Values.config.secureCookies | quote }}
+  TRUSTED_PROXY_CIDRS: {{ .Values.config.trustedProxyCidrs | quote }}
+  RETENTION_DAYS: {{ .Values.config.retentionDays | quote }}
+  ARCHIVE_PATH: {{ .Values.config.archivePath | quote }}
+  CS_BASE_URL: {{ .Values.config.csBaseUrl | quote }}

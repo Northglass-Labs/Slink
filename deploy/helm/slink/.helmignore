@@ -1,0 +1,15 @@
+# Patterns to ignore when packaging Helm charts.
+.DS_Store
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.tmp
+*.bak
+*.orig
+*~
+# CI/Helm artifacts outside the dependency directory
+/*.tgz
+# Editor / OS noise
+Thumbs.db

@@ -1,0 +1,20 @@
+{{- if and .Values.api.archive.persistence.enabled (not .Values.api.archive.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slink.api.fullname" . }}-archive
+  labels:
+    {{- include "slink.labels" . | nindent 4 }}
+    app.kubernetes.io/component: archive
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    {{- toYaml .Values.api.archive.persistence.accessModes | nindent 4 }}
+  {{- with .Values.api.archive.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.api.archive.persistence.size | quote }}
+{{- end }}

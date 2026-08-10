@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source:
+    name: Verify release source
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Require exact semver tag on reviewed main history
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must be exact vMAJOR.MINOR.PATCH semver" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
+
+  build-and-publish:
+    name: Build, scan, and publish container images
+    needs: verify-source
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - name: api
+            context: backend
+            dockerfile: backend/Dockerfile
+            image: ghcr.io/northglass-labs/slink-api
+          - name: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile
+            image: ghcr.io/northglass-labs/slink-frontend
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build local scan candidate
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: production
+          platforms: linux/amd64
+          load: true
+          tags: slink-scan:${{ matrix.name }}
+      - name: Scan candidate image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: slink-scan:${{ matrix.name }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Build and push signed-source image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: production
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ matrix.image }}:${{ github.ref_name }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      - name: Attest published image
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-name: ${{ matrix.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    environment: release
+    needs: build-and-publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_tag="${GITHUB_REF_NAME}"
+          previous_tag="$(git describe --tags --abbrev=0 "${current_tag}^" 2>/dev/null || true)"
+          {
+            echo "## What's changed"
+            echo
+            if [[ -n "$previous_tag" ]]; then
+              git log --oneline "$previous_tag..HEAD"
+            else
+              git log --oneline
+            fi
+            echo
+            echo "## Container images"
+            echo
+            echo "- ghcr.io/northglass-labs/slink-api:$current_tag"
+            echo "- ghcr.io/northglass-labs/slink-frontend:$current_tag"
+            echo
+            echo "Both images include an SBOM and GitHub build-provenance attestation."
+          } > /tmp/release-notes.md
+          echo "notes_path=/tmp/release-notes.md" >> "$GITHUB_OUTPUT"
+      - name: Create Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.changelog.outputs.notes_path }}
+          draft: false
+          prerelease: false

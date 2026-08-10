@@ -1,0 +1,86 @@
+services:
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.31.2-trixie@sha256:0a7658b1a51df663ad17cfe82ab6edd7f56f82cfe7b49f282f83a30617f3f404
+    ports:
+      - "443:8443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      edge:
+        ipv4_address: 172.30.50.10
+
+  api:
+    build:
+      context: ./backend
+      target: production
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: production
+      SECURE_COOKIES: "true"
+      TRUSTED_PROXY_CIDRS: "172.30.50.10/32"
+      ARCHIVE_PATH: /data/archive
+    ports: !reset []
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes: !override
+      - archive:/data/archive
+    networks:
+      - backend
+      - edge
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports: !reset []
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes: !override []
+    networks:
+      - edge
+
+  db:
+    ports: !reset []
+    networks:
+      - backend
+
+networks:
+  backend:
+    internal: true
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.50.0/24
+
+volumes:
+  archive:

@@ -1,0 +1,239 @@
+# ---------------------------------------------------------------------------
+# Slink — default values
+#
+# Sized for a small SOC (5-10 watchlist keywords, ~10 collectors). Increase
+# resources vertically and consider managed PostgreSQL as volume grows. Keep
+# api.replicas at one until scheduler leader election is implemented.
+# ---------------------------------------------------------------------------
+
+# Global override for the chart name. Leave empty to use the chart's name.
+nameOverride: ""
+fullnameOverride: ""
+
+# ---------------------------------------------------------------------------
+# Image registries
+# ---------------------------------------------------------------------------
+image:
+  registry: ghcr.io
+  pullPolicy: IfNotPresent
+  pullSecrets: []  # e.g. [{ name: ghcr-pull }]
+
+api:
+  replicas: 1
+  image:
+    repository: northglass-labs/slink-api
+    digest: ""  # required: sha256 digest from the signed release
+  service:
+    type: ClusterIP
+    port: 8000
+  containerPort: 8000
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  podAnnotations: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  archive:
+    persistence:
+      enabled: true
+      existingClaim: ""
+      accessModes: ["ReadWriteOnce"]
+      size: 5Gi
+      storageClass: ""
+
+frontend:
+  replicas: 1
+  image:
+    repository: northglass-labs/slink-frontend
+    digest: ""  # required: sha256 digest from the signed release
+  service:
+    type: ClusterIP
+    port: 80
+  containerPort: 8080
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101  # nginx user inside the unprivileged frontend image
+    fsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# Migration job — runs `alembic upgrade head` as a Helm hook before install
+# and before each upgrade. Uses the API image (which contains the migrations).
+# ---------------------------------------------------------------------------
+migrate:
+  enabled: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+
+# ---------------------------------------------------------------------------
+# Non-secret runtime config. Anything containing a credential should live in
+# the Secret referenced by `existingSecret`, not here.
+# ---------------------------------------------------------------------------
+config:
+  appEnv: "production"
+  # External URL — used to build deep-links inside Pushover/Teams notifications.
+  # Wrong value here = broken links in alerts.
+  slinkBaseUrl: "https://slink.example.com"
+  # Required in production — activates Secure cookies + refuses default admin/secret values.
+  secureCookies: true
+  # Exact ingress-controller source address/CIDR allowed to provide forwarding
+  # headers. Empty is fail-closed and ignores all forwarding headers.
+  trustedProxyCidrs: ""
+  # Days of detection history to retain. The daily prune job exports to JSONL before delete.
+  retentionDays: 90
+  # Path inside the container where pruned-detection JSONL exports land.
+  archivePath: "/data/archive"
+  # CrowdStrike Falcon base URL — only consulted if cs_client_id is set in the secret.
+  csBaseUrl: "https://api.crowdstrike.com"
+
+# ---------------------------------------------------------------------------
+# Secret handling:
+#
+# Create the Secret out-of-band, then pass its name through existingSecret.
+# The chart intentionally has no inline-secret mode so credentials never enter
+# values files, command history, or Helm release state.
+#
+# Required keys in the Secret:
+#   DATABASE_URL, SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD,
+#   PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY, TEAMS_WEBHOOK_URL,
+#   ANTHROPIC_API_KEY, CS_CLIENT_ID, CS_CLIENT_SECRET, OTX_API_KEY
+#
+# The bundled PostgreSQL chart uses its own existing Secret, documented below;
+# do not duplicate that database bootstrap password in this application Secret.
+# ---------------------------------------------------------------------------
+existingSecret: ""  # required; chart never renders credentials into release state
+
+# ---------------------------------------------------------------------------
+# Ingress — disabled by default. Enable with --set ingress.enabled=true.
+#
+# If you have cert-manager installed, set ingress.certManager.clusterIssuer
+# to issue a TLS certificate automatically. The TLS section below will be
+# rendered with a host-derived secret name.
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # Example for cert-manager:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-body-size: 10m
+  hosts:
+    - host: slink.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: api
+        - path: /docs
+          pathType: Prefix
+          service: api
+        - path: /openapi.json
+          pathType: Prefix
+          service: api
+  tls:
+    enabled: true
+    # Leave secretName blank to derive `<release>-tls`. Override to bring your own.
+    secretName: ""
+  certManager:
+    # Convenience flag — when set and cert-manager is installed, this annotation
+    # is added so the TLS secret is auto-issued.
+    clusterIssuer: ""
+
+# ---------------------------------------------------------------------------
+# ServiceAccount
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# PostgreSQL subchart (Bitnami) — disable to bring your own DB.
+# Settings here are forwarded to the subchart. See the bitnami/postgresql
+# README for the full schema.
+# ---------------------------------------------------------------------------
+postgresql:
+  enabled: true
+  auth:
+    username: slink
+    database: slink
+    # Required when the bundled database is enabled. Create this Secret
+    # out-of-band with Bitnami's `postgres-password` and `password` keys; using
+    # an existing Secret keeps credentials out of Helm values and release state.
+    existingSecret: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+  metrics:
+    enabled: false   # set true if you have Prometheus Operator + a ServiceMonitor pipeline
+
+# ---------------------------------------------------------------------------
+# Pod Disruption Budgets — keep the API up during voluntary disruptions
+# (node drains, autoscaler evictions). Disabled when replicas=1.
+# ---------------------------------------------------------------------------
+pdb:
+  enabled: false
+  minAvailable: 1

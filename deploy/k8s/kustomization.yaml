@@ -1,0 +1,46 @@
+# Slink — plain Kubernetes manifests glued by Kustomize.
+#
+# Apply with:    kubectl apply -k deploy/k8s/
+# Diff first:    kubectl diff -k deploy/k8s/
+#
+# This bundle is for users who don't want Helm. The Helm chart at
+# deploy/helm/slink is the more flexible deployment. These manifests
+# intentionally stick to the bare minimum.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: slink
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/name: slink
+      app.kubernetes.io/part-of: slink
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - archive-pvc.yaml
+  - postgres-statefulset.yaml
+  - postgres-service.yaml
+  - deployment-api.yaml
+  - deployment-frontend.yaml
+  - service-api.yaml
+  - service-frontend.yaml
+  - ingress.yaml
+
+# The local secret file is deliberately absent from Git. Rendering fails until
+# the operator copies secret.env.example to secret.env and replaces every value.
+secretGenerator:
+  - name: slink-secrets
+    behavior: create
+    envs:
+      - secret.env
+
+# Image tag pin. Override per-environment by layering another kustomization on top.
+images:
+  - name: ghcr.io/northglass-labs/slink-api
+    newTag: v0.1.0
+  - name: ghcr.io/northglass-labs/slink-frontend
+    newTag: v0.1.0

@@ -1,0 +1,42 @@
+Slink {{ .Chart.AppVersion }} installed in namespace `{{ .Release.Namespace }}` as release `{{ .Release.Name }}`.
+
+Status:
+  kubectl --namespace {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Tail API logs:
+  kubectl --namespace {{ .Release.Namespace }} logs -f deployment/{{ include "slink.api.fullname" . }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress is enabled. Once DNS propagates and (if applicable) cert-manager
+issues the TLS certificate, browse to:
+{{- range .Values.ingress.hosts }}
+  https://{{ .host }}/
+{{- end }}
+
+{{- else }}
+
+Ingress is disabled. To reach the UI from your workstation:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "slink.frontend.fullname" . }} 8080:{{ .Values.frontend.service.port }}
+  open http://localhost:8080
+
+To reach the API directly:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "slink.api.fullname" . }} 8000:{{ .Values.api.service.port }}
+
+{{- end }}
+
+{{- if not .Values.config.secureCookies }}
+
+WARNING: secureCookies is FALSE. APP_ENV=production will reject this unsafe
+configuration. Terminate HTTPS and set config.secureCookies=true.
+{{- end }}
+
+Migrations are applied automatically as a pre-install / pre-upgrade hook.
+On first install, create the admin user (one-shot):
+
+  kubectl --namespace {{ .Release.Namespace }} exec -it deployment/{{ include "slink.api.fullname" . }} -- \
+    python -m app.utils.create_user <username> admin
+
+The command prompts twice for the password without placing it in process arguments.
+
+Documentation: https://github.com/Northglass-Labs/slink

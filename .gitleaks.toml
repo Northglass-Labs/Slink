@@ -1,0 +1,9 @@
+# Per-repo gitleaks config. Inherits the bundled default ruleset.
+#
+# Local pre-commit hooks that look for a project-level config will prefer
+# this file over their global config. Ships in-tree so contributors can scan
+# without any host-specific hook layout.
+title = "Slink gitleaks config"
+
+[extend]
+useDefault = true

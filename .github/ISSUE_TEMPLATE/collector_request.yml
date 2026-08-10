@@ -1,0 +1,50 @@
+name: New TI source request
+description: Request a new threat-intelligence collector (leak site, OSINT feed, etc.)
+title: "[collector] "
+labels: ["collector", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new source. Collectors are intentionally small and self-contained — see [`docs/COLLECTORS.md`](../../docs/COLLECTORS.md) for the plug-in pattern.
+  - type: input
+    id: source-name
+    attributes:
+      label: Source name
+      description: The feed, leak site, or provider you want covered.
+      placeholder: e.g. ExampleThreatFeed
+    validations:
+      required: true
+  - type: input
+    id: source-url
+    attributes:
+      label: Source URL / API docs
+      description: Where the data lives, and API documentation if any.
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication
+      description: Does the source require credentials?
+      options:
+        - No auth (public)
+        - API key / auth-key
+        - OAuth / token
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: data-shape
+    attributes:
+      label: Data shape
+      description: What does a record look like? Paste a small sample (redact anything sensitive).
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Rate limits, gotchas, licensing constraints, anything else worth knowing.
+    validations:
+      required: false

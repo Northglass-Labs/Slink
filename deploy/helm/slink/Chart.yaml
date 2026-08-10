@@ -1,0 +1,31 @@
+apiVersion: v2
+name: slink
+description: |
+  Slink — open-source self-hosted threat-intelligence aggregator by Northglass Labs.
+  Polls ransomware leak sites and OSINT feeds, matches a keyword watchlist,
+  scores severity, extracts IOCs, and notifies via Pushover and Microsoft Teams.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/Northglass-Labs/slink
+sources:
+  - https://github.com/Northglass-Labs/slink
+maintainers:
+  - name: Northglass Labs
+    url: https://github.com/Northglass-Labs
+keywords:
+  - threat-intelligence
+  - security
+  - soc
+  - ransomware
+  - osint
+icon: https://raw.githubusercontent.com/Northglass-Labs/Slink/main/docs/screenshots/logo.png
+dependencies:
+  # Bitnami PostgreSQL — pinned to a recent stable major (chart 15.x ships PG 16).
+  # Disable by setting postgresql.enabled=false and supplying DATABASE_URL for
+  # an external Postgres instance through the application existingSecret.
+  - name: postgresql
+    version: "15.5.38"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: postgresql.enabled
