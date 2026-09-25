@@ -1,17 +1,17 @@
-fastapi==0.135.2
+fastapi==0.141.1
 anyio>=4.14.2,<5          # TLS hostname and subprocess security fixes
 starlette>=0.47.2         # CVE-2024-47874, CVE-2025-54121 fixed in 0.47.2
-uvicorn[standard]==0.30.0
-sqlalchemy[asyncio]==2.0.35
-asyncpg==0.30.0
-alembic==1.14.0
-apscheduler==3.10.4
-pydantic-settings==2.6.0
-PyJWT==2.13.0               # current security-fixed release; Slink permits HS256 only
+uvicorn[standard]==0.53.0
+sqlalchemy[asyncio]==2.0.54
+asyncpg==0.31.0
+alembic==1.20.0
+apscheduler==3.11.3
+pydantic-settings==2.15.0
+PyJWT==2.14.0               # current security-fixed release; Slink permits HS256 only
 bcrypt>=4.0.0
 httpx==0.28.1            # app uses the stable AsyncClient API
 httpcore==1.0.9          # direct dependency for DNS-pinned webhook transport
-python-multipart==0.0.31  # CVE-2024-53981, CVE-2026-24486 fixed; bumped to 0.0.31 for latest fixes
-slowapi==0.1.9            # Rate limiting for brute-force protection on /api/auth/login
+python-multipart==0.0.32  # CVE-2024-53981, CVE-2026-24486 fixed; bumped to 0.0.31 for latest fixes
+slowapi==0.1.10            # Rate limiting for brute-force protection on /api/auth/login
 prometheus-fastapi-instrumentator>=7.0.0
 structlog>=24.0.0
