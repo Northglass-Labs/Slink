@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginxinc/nginx-unprivileged:1.31.2-trixie@sha256:0a7658b1a51df663ad17cfe82ab6edd7f56f82cfe7b49f282f83a30617f3f404
+    image: nginxinc/nginx-unprivileged:1.31.5-trixie@sha256:9d689e987337916e713a2d5fa84966550d9532e4cb512e7d6ad99df87ffe1ec8
     ports:
       - "443:8443"
     volumes:
