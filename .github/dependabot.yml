@@ -26,12 +26,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     ignore:
-      # Held 2026-11-28: typescript-eslint 8.74 (latest) peers typescript
-      # ">=4.8.4 <6.1.0", so TypeScript 7 fails `npm ci` with ERESOLVE. Lift
-      # this once typescript-eslint supports TS 7:
-      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      # Raise when typescript-eslint's typescript peer cap rises. Its peer range
+      # is ">=4.8.4 <6.1.0" (checked 2026-11-28, typescript-eslint 8.74.0), so
+      # TypeScript 6.1+ and 7 fail `npm ci` with ERESOLVE. 6.0.x is fine.
+      # https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/typescript-eslint/package.json
       - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
+        versions: [">=6.1.0"]
     groups:
       frontend-minor-patch:
         patterns: ["*"]
