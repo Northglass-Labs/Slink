@@ -57,6 +57,7 @@ npm ci
 npm run dev      # vite dev server on :5173 (proxied to :5180 in compose)
 npm run build    # tsc -b && vite build
 npm run lint     # eslint .
+npm test         # vitest (happy-dom); CI runs it too
 ```
 
 ### Dependency locks
