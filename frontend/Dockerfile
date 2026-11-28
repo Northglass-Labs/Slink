@@ -1,6 +1,6 @@
 # Literal FROM lines, so Dependabot can refresh the digests.
 FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS node-base
-FROM nginxinc/nginx-unprivileged:1.31.2-trixie@sha256:0a7658b1a51df663ad17cfe82ab6edd7f56f82cfe7b49f282f83a30617f3f404 AS nginx-base
+FROM nginxinc/nginx-unprivileged:1.31.7-trixie@sha256:09b0d3eda2aa592d2487f284519419015cab010d7df16cd0fe224b585fc60eb6 AS nginx-base
 
 FROM node-base AS dependencies
 WORKDIR /app
