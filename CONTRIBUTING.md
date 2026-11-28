@@ -49,6 +49,8 @@ unset TEST_DATABASE_URL
 
 ### Frontend
 
+Use Node 26 (the current LTS line; see `frontend/.nvmrc`, CI and the Dockerfile). `package.json` allows Node 22.13 or later because ESLint 10 and Vite 8 need at least that.
+
 ```bash
 cd frontend
 npm ci

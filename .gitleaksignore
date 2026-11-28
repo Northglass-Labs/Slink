@@ -1,0 +1,2 @@
+# Ephemeral CI Postgres service password (fake, test-only); line 21 of ci.yml.
+.github/workflows/ci.yml:generic-password:21

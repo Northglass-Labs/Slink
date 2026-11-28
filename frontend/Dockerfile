@@ -1,4 +1,4 @@
-ARG NODE_BASE=node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+ARG NODE_BASE=node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 ARG NGINX_BASE=nginxinc/nginx-unprivileged:1.31.2-trixie@sha256:0a7658b1a51df663ad17cfe82ab6edd7f56f82cfe7b49f282f83a30617f3f404
 
 FROM ${NODE_BASE} AS dependencies
