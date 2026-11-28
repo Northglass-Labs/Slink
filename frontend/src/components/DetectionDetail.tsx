@@ -171,6 +171,17 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
     }
   }
 
+  const retryButtonStyle: React.CSSProperties = {
+    padding: "3px 10px",
+    fontSize: 11,
+    fontFamily: "var(--font-sans)",
+    background: "var(--color-surface-2)",
+    color: "var(--color-text-secondary)",
+    border: "1px solid var(--color-border)",
+    borderRadius: 4,
+    cursor: "pointer",
+  };
+
   const fieldLabel: React.CSSProperties = {
     fontSize: 11,
     fontWeight: 500,
@@ -521,7 +532,14 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
               {aiLoading && (
                 <div style={{ color: "var(--color-text-tertiary)" }}>Asking Claude Haiku for a summary…</div>
               )}
-              {aiError && <div style={{ color: "var(--color-danger)" }}>{aiError}</div>}
+              {aiError && (
+                <div style={{ color: "var(--color-danger)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>{aiError}</span>
+                  <button onClick={() => fetchAiSummary(false)} disabled={aiLoading} style={retryButtonStyle}>
+                    Retry
+                  </button>
+                </div>
+              )}
               {!aiLoading && !aiError && aiSummary && (
                 <>
                   <div style={{ marginBottom: 18 }}>
@@ -587,7 +605,12 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
                 </div>
               )}
               {rawError && (
-                <div style={{ fontSize: 12, color: "var(--color-danger)" }}>{rawError}</div>
+                <div style={{ fontSize: 12, color: "var(--color-danger)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>{rawError}</span>
+                  <button onClick={fetchRawData} disabled={rawLoading} style={retryButtonStyle}>
+                    Retry
+                  </button>
+                </div>
               )}
               {!rawLoading && !rawError && rawData === null && (
                 <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>

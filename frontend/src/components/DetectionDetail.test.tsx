@@ -94,7 +94,7 @@ describe("DetectionDetail AI tab", () => {
     expect(aiCalls()).toHaveLength(1);
   });
 
-  it("shows the error, stops, and retries exactly once per re-click", async () => {
+  it("shows the error, stops, and retries exactly once per click", async () => {
     post.mockImplementation(() => rejectAfter(httpError(502)));
     const user = userEvent.setup();
     mount();
@@ -111,6 +111,12 @@ describe("DetectionDetail AI tab", () => {
     await settle(100);
     expect(aiCalls()).toHaveLength(2);
 
+    // So does the Retry control, and it can succeed.
+    post.mockResolvedValue({ data: SUMMARY });
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText(SUMMARY.summary)).toBeTruthy();
+    await settle(100);
+    expect(aiCalls()).toHaveLength(3);
   });
 
   it("maps 503 to the disabled message", async () => {
@@ -167,7 +173,7 @@ describe("DetectionDetail Raw tab", () => {
     expect(rawCalls()).toHaveLength(1);
   });
 
-  it("shows the error, stops, and retries exactly once per re-click", async () => {
+  it("shows the error, stops, and retries exactly once per click", async () => {
     get.mockImplementation(async (url: string) => {
       if (url === "/detections/7") return rejectAfter(httpError(500));
       return { data: [] };
@@ -185,6 +191,15 @@ describe("DetectionDetail Raw tab", () => {
     await settle(100);
     expect(rawCalls()).toHaveLength(2);
 
+    get.mockImplementation(async (url: string) =>
+      url === "/detections/7"
+        ? { data: { ...makeDetection(7), raw_data: { k: "v" } } }
+        : { data: [] },
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText(/"k": "v"/)).toBeTruthy();
+    await settle(100);
+    expect(rawCalls()).toHaveLength(3);
   });
 
   it("gives a viewer no Raw tab and never requests raw data", async () => {
