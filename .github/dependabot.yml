@@ -59,6 +59,12 @@ updates:
     groups:
       frontend-images:
         patterns: ["*"]
+    # The Node major follows frontend/.nvmrc, which CI tests; Dependabot does
+    # not edit that file, so a major here would ship an untested Node. Raise
+    # it with .nvmrc in one reviewed change. Digest refreshes still come.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /backend
@@ -68,6 +74,13 @@ updates:
     groups:
       backend-images:
         patterns: ["*"]
+    # CI tests Python 3.12 ("Backend (Python 3.12 + Postgres 16)") and the
+    # hash locks are compiled for it, so a new Python minor (3.12 to 3.15) must
+    # move with CI and the locks in one reviewed change. Patches and digest
+    # refreshes still come.
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker-compose
     directory: /
