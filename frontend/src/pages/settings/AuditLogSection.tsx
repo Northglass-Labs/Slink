@@ -24,7 +24,7 @@ export default function AuditLogSection() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadLogs = useCallback(async (newOffset: number) => {
     setLoading(true);
@@ -41,9 +41,29 @@ export default function AuditLogSection() {
     }
   }, []);
 
+  // First page: `loading` starts true, so state is only set once the request
+  // resolves (not synchronously in the effect).
   useEffect(() => {
-    loadLogs(0);
-  }, [loadLogs]);
+    let active = true;
+    api
+      .get<AuditLogListResponse>("/audit", {
+        params: { limit: AUDIT_LIMIT, offset: 0 },
+      })
+      .then((r) => {
+        if (!active) return;
+        setLogs(r.data.items);
+        setTotal(r.data.total);
+      })
+      .catch(() => {
+        // silently fail — only admins see this section
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <SectionCard title="Audit Log">

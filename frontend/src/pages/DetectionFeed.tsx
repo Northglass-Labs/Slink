@@ -58,11 +58,10 @@ export default function DetectionFeed() {
   const [lastSeenId, setLastSeenId] = useState<number>(() => {
     return parseInt(localStorage.getItem("slink_last_seen_id") || "0");
   });
-  const [newCount, setNewCount] = useState(0);
   // Tracks whether we've received our first payload — without this, the
   // banner would fire on first render claiming every fetched detection is
   // "new" because lastSeenId starts at 0.
-  const hasInitialized = useRef(false);
+  const [baselineReady, setBaselineReady] = useState(false);
 
   // Keyboard navigation state
   const [activeRowIndex, setActiveRowIndex] = useState(-1);
@@ -121,12 +120,17 @@ export default function DetectionFeed() {
     search !== "" || dateRange !== "all" || sortBy !== "";
 
   // Reset pagination + selection whenever filters change. The query itself
-  // refetches automatically because the params change the cache key.
-  useEffect(() => {
+  // refetches automatically because the params change the cache key. This
+  // adjusts state during render (React's documented alternative to an effect
+  // that only resets state) so the stale page never paints.
+  const filterKey = JSON.stringify([source, severity, statusFilter, search, sortBy, sortDir, dateRange]);
+  const [appliedFilterKey, setAppliedFilterKey] = useState(filterKey);
+  if (appliedFilterKey !== filterKey) {
+    setAppliedFilterKey(filterKey);
     setOffset(0);
     setExpandedId(null);
     setSelectedIds(new Set());
-  }, [source, severity, statusFilter, search, sortBy, sortDir, dateRange]);
+  }
 
   // Build the params object that drives both the query and any cache writes.
   // Memoized so the queryKey stays referentially stable across renders that
@@ -154,24 +158,20 @@ export default function DetectionFeed() {
   // Track new detections — compare against the last-seen id whenever a fresh
   // payload arrives from the server. The first payload only sets a baseline
   // (no banner), subsequent fetches surface anything above lastSeenId.
+  const maxItemId = items.length > 0 ? Math.max(...items.map((d) => d.id)) : 0;
+  if (!baselineReady && items.length > 0) {
+    setBaselineReady(true);
+    setLastSeenId(maxItemId);
+  }
+  const newCount =
+    baselineReady && maxItemId > lastSeenId
+      ? items.filter((d) => d.id > lastSeenId).length
+      : 0;
+
+  // Persist the baseline once it exists (and after each dismissal).
   useEffect(() => {
-    if (items.length === 0) return;
-    const maxId = Math.max(...items.map((d) => d.id));
-
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      setLastSeenId(maxId);
-      localStorage.setItem("slink_last_seen_id", String(maxId));
-      setNewCount(0);
-      return;
-    }
-
-    if (maxId > lastSeenId) {
-      setNewCount(items.filter((d) => d.id > lastSeenId).length);
-    } else {
-      setNewCount(0);
-    }
-  }, [items, lastSeenId]);
+    if (baselineReady) localStorage.setItem("slink_last_seen_id", String(lastSeenId));
+  }, [baselineReady, lastSeenId]);
 
   // Locally update the cached detection so the row reflects the new status
   // immediately. The 30s background poll will reconcile against the server.
@@ -225,8 +225,6 @@ export default function DetectionFeed() {
   function dismissNewBanner() {
     const maxId = items.length > 0 ? Math.max(...items.map((d) => d.id)) : 0;
     setLastSeenId(maxId);
-    localStorage.setItem("slink_last_seen_id", String(maxId));
-    setNewCount(0);
     setOffset(0);
     refetch();
   }

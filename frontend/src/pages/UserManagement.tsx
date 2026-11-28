@@ -20,24 +20,27 @@ export default function UserManagement() {
   const [formError, setFormError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  async function fetchUsers() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get<UserInfo[]>("/auth/users");
-      setUsers(res.data);
-    } catch {
-      setError("Failed to load users.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Rules of Hooks: all hooks must run on every render. The admin gate is
   // applied via early return BELOW the hooks block, not above it.
   useEffect(() => {
     if (!isAdmin) return;
-    fetchUsers();
+    // `loading` starts true and `error` starts null, so the initial load only
+    // sets state once the request resolves (not synchronously in the effect).
+    let active = true;
+    api
+      .get<UserInfo[]>("/auth/users")
+      .then((res) => {
+        if (active) setUsers(res.data);
+      })
+      .catch(() => {
+        if (active) setError("Failed to load users.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [isAdmin]);
 
   // Non-admins shouldn't see this page
