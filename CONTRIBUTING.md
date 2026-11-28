@@ -49,7 +49,7 @@ unset TEST_DATABASE_URL
 
 ### Frontend
 
-Use Node 26 (the current LTS line; see `frontend/.nvmrc`, CI and the Dockerfile). `package.json` allows Node 22.13 or later because ESLint 10 and Vite 8 need at least that.
+Use Node 26, the current LTS line (see `frontend/.nvmrc`; CI reads the same file, and the Dockerfile pins the matching image). Node 20 is end of life; 22.13 is the lowest 22.x the toolchain accepts, so `package.json` allows `>=22.13.0`.
 
 ```bash
 cd frontend
