@@ -108,13 +108,6 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
       .finally(() => setAiLoading(false));
   }, [detection.id]);
 
-  useEffect(() => {
-    if (activeTab !== "ai") return;
-    if (aiSummary !== undefined) return;
-    if (aiLoading) return;
-    fetchAiSummary(false);
-  }, [activeTab, aiSummary, aiLoading, fetchAiSummary]);
-
   // Fetch active incidents and check for keyword overlap with this detection
   useEffect(() => {
     api.get<Incident[]>("/incidents")
@@ -132,10 +125,7 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
 
   // Fetch the full detection (including raw_data) the first time an admin
   // activates the Raw tab. Cached in component state so tab switches are cheap.
-  useEffect(() => {
-    if (activeTab !== "raw" || !isAdmin) return;
-    if (rawData !== undefined) return;
-    if (rawLoading) return;
+  const fetchRawData = useCallback(() => {
     setRawLoading(true);
     setRawError(null);
     api
@@ -143,7 +133,18 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
       .then((r) => setRawData(r.data.raw_data ?? null))
       .catch(() => setRawError("Failed to load raw data."))
       .finally(() => setRawLoading(false));
-  }, [activeTab, isAdmin, detection.id, rawData, rawLoading]);
+  }, [detection.id]);
+
+  // Lazy loads are triggered by the tab click (an event), not an effect, so
+  // no state is set synchronously during rendering.
+  function selectTab(tab: Tab) {
+    setActiveTab(tab);
+    if (tab === "ai" && aiSummary === undefined && !aiLoading) {
+      fetchAiSummary(false);
+    } else if (tab === "raw" && isAdmin && rawData === undefined && !rawLoading) {
+      fetchRawData();
+    }
+  }
 
   const handleIndicatorCountChange = useCallback((count: number) => {
     setIndicatorCount(count);
@@ -169,6 +170,17 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
       setUpdating(false);
     }
   }
+
+  const retryButtonStyle: React.CSSProperties = {
+    padding: "3px 10px",
+    fontSize: 11,
+    fontFamily: "var(--font-sans)",
+    background: "var(--color-surface-2)",
+    color: "var(--color-text-secondary)",
+    border: "1px solid var(--color-border)",
+    borderRadius: 4,
+    cursor: "pointer",
+  };
 
   const fieldLabel: React.CSSProperties = {
     fontSize: 11,
@@ -223,7 +235,7 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
                 key={tab.id}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActiveTab(tab.id);
+                  selectTab(tab.id);
                 }}
                 style={{
                   padding: "8px 16px",
@@ -520,7 +532,14 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
               {aiLoading && (
                 <div style={{ color: "var(--color-text-tertiary)" }}>Asking Claude Haiku for a summary…</div>
               )}
-              {aiError && <div style={{ color: "var(--color-danger)" }}>{aiError}</div>}
+              {aiError && (
+                <div style={{ color: "var(--color-danger)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>{aiError}</span>
+                  <button onClick={() => fetchAiSummary(false)} disabled={aiLoading} style={retryButtonStyle}>
+                    Retry
+                  </button>
+                </div>
+              )}
               {!aiLoading && !aiError && aiSummary && (
                 <>
                   <div style={{ marginBottom: 18 }}>
@@ -586,7 +605,12 @@ export default function DetectionDetail({ detection, onStatusChange }: Props) {
                 </div>
               )}
               {rawError && (
-                <div style={{ fontSize: 12, color: "var(--color-danger)" }}>{rawError}</div>
+                <div style={{ fontSize: 12, color: "var(--color-danger)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>{rawError}</span>
+                  <button onClick={fetchRawData} disabled={rawLoading} style={retryButtonStyle}>
+                    Retry
+                  </button>
+                </div>
               )}
               {!rawLoading && !rawError && rawData === null && (
                 <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>

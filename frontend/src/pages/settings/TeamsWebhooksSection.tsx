@@ -140,7 +140,7 @@ function WebhookForm({
 
 export default function TeamsWebhooksSection() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [testResults, setTestResults] = useState<
@@ -161,8 +161,24 @@ export default function TeamsWebhooksSection() {
     }
   }
 
+  // Initial load: `loading` starts true, so state is only set once the request
+  // resolves (not synchronously in the effect).
   useEffect(() => {
-    loadWebhooks();
+    let active = true;
+    api
+      .get<Webhook[]>("/webhooks")
+      .then((r) => {
+        if (active) setWebhooks(r.data);
+      })
+      .catch(() => {
+        // silently fail — only admins see this section
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleCreate(data: WebhookFormData) {

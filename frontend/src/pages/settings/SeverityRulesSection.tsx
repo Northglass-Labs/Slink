@@ -139,7 +139,7 @@ function RuleForm({
 
 export default function SeverityRulesSection() {
   const [rules, setRules] = useState<SeverityRule[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -156,8 +156,24 @@ export default function SeverityRulesSection() {
     }
   }
 
+  // Initial load: `loading` starts true, so state is only set once the request
+  // resolves (not synchronously in the effect).
   useEffect(() => {
-    loadRules();
+    let active = true;
+    api
+      .get<SeverityRule[]>("/severity-rules")
+      .then((r) => {
+        if (active) setRules(r.data);
+      })
+      .catch(() => {
+        // silently fail
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Convert form data to the API request shape (blank → null).

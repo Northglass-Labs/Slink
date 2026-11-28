@@ -30,7 +30,6 @@ export default function NotificationChannelsSection({ isAdmin }: NotificationCha
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
     api
       .get<NotificationChannel[]>("/notification-channels")
       .then((r) => {

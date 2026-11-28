@@ -49,12 +49,15 @@ unset TEST_DATABASE_URL
 
 ### Frontend
 
+Use Node 26, the current LTS line (see `frontend/.nvmrc`; CI reads the same file, and the Dockerfile pins the matching image). Node 20 is end of life; 22.13 is the lowest 22.x the toolchain accepts, so `package.json` allows `>=22.13.0`.
+
 ```bash
 cd frontend
 npm ci
 npm run dev      # vite dev server on :5173 (proxied to :5180 in compose)
 npm run build    # tsc -b && vite build
 npm run lint     # eslint .
+npm test         # vitest (happy-dom); CI runs it too
 ```
 
 ### Dependency locks
