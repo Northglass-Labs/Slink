@@ -48,9 +48,12 @@ def test_container_bases_are_digest_pinned_and_frontend_serves_on_unprivileged_p
     backend = read("backend/Dockerfile")
     frontend = read("frontend/Dockerfile")
 
-    assert re.search(r"ARG PYTHON_BASE=.+@sha256:[0-9a-f]{64}", backend)
-    assert re.search(r"ARG NODE_BASE=.+@sha256:[0-9a-f]{64}", frontend)
-    assert re.search(r"ARG NGINX_BASE=.+@sha256:[0-9a-f]{64}", frontend)
+    # Literal FROM lines (not ARG defaults) so Dependabot's docker ecosystem
+    # can refresh the digests.
+    assert re.search(r"^FROM python:\S+@sha256:[0-9a-f]{64} AS base$", backend, re.M)
+    assert re.search(r"^FROM node:\S+@sha256:[0-9a-f]{64} AS node-base$", frontend, re.M)
+    assert re.search(r"^FROM nginxinc/nginx-unprivileged:\S+@sha256:[0-9a-f]{64} AS nginx-base$", frontend, re.M)
+    assert not re.search(r"^ARG \w+_BASE=", backend + frontend, re.M)
     assert 'CMD ["echo", "Build complete"]' not in frontend
     assert "EXPOSE 8080" in frontend
     assert "USER 101" in frontend or "nginx-unprivileged" in frontend

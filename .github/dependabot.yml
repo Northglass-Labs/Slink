@@ -49,6 +49,26 @@ updates:
       actions:
         patterns: ["*"]
 
+  # Dockerfile base images are digest-pinned FROM lines; without this entry the
+  # digests never refresh (the old node:20 pin sat unchanged for months).
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-images:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-images:
+        patterns: ["*"]
+
   - package-ecosystem: docker-compose
     directory: /
     schedule:
